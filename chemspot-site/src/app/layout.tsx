@@ -1,3 +1,4 @@
+import './globals.css';
 
 export const metadata = { title: 'ChemSpot Tutor', description: 'Chemistry Olympiad spot-test practice' };
 export default function RootLayout({ children }: { children: React.ReactNode }){
