@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-const MIX_LABEL = 'Niedeschlag'; // change to 'Niederschlag' if you prefer the correct spelling
-
 // ---------- shared ----------
 function cls(...s: (string|false|undefined)[]) { return s.filter(Boolean).join(' '); }
 type Msg = { role: 'user'|'assistant', content: string };
@@ -108,31 +106,23 @@ function ChatPane() {
 }
 
 // ---------- REALISTIC ----------
-type Cell = { rgb?: [number,number,number] } | null;
-type RealisticResp = { solutions: { label:string; cation:string; anion:string; intrinsicRgb?: [number,number,number] }[]; grid: Cell[][]; stats?: { coloredCount:number; distinct:number } };
+type Cell = { type: string; color?: string } | null;
+type RealisticResp = { solutions: { label:string; cation:string; anion:string; intrinsic?:string }[]; grid: Cell[][] };
 
-
-// put near the top, replace your existing colorChip()
-function colorChip(rgb?: [number, number, number]) {
+function swatchRGB(rgb?: [number,number,number]) {
   if (!rgb) return null;
-  const [r, g, b] = rgb;
+  const [r,g,b] = rgb;
+  const bg = `rgb(${r}, ${g}, ${b})`;
+  // Pick text color for contrast
+  const yiq = (r*299 + g*587 + b*114)/1000;
+  const textColor = yiq >= 160 ? '#111' : 'white';
   return (
-    <span
-      // inline size so it shows even if Tailwind didn’t load
-      style={{
-        display: 'inline-block',
-        width: '40px',
-        height: '20px',
-        background: `rgb(${r}, ${g}, ${b})`,
-        borderRadius: '6px'
-      }}
-      aria-label={`rgb(${r},${g},${b})`}
-      title={`rgb(${r},${g},${b})`}
-    />
+    <span className="inline-block rounded px-2 py-0.5 text-xs"
+          style={{ background: bg, color: textColor }}>
+      {r},{g},{b}
+    </span>
   );
 }
-
-
 
 
 function RealisticPane() {
@@ -174,33 +164,24 @@ function RealisticPane() {
                 <th className="p-2"></th>
                 {data.solutions.map(s=><th key={s.label} className="p-2">{s.label}</th>)}
               </tr></thead>
-<tbody>
-  {data.solutions.map((row, i) => (
-    <tr key={row.label} className="border-t">
-      <th className="p-2 font-medium">
-        {row.label}
-        {row.intrinsicRgb && <span className="ml-2">{colorChip(row.intrinsicRgb)}</span>}
-      </th>
-      {data.grid[i].map((cell, j) => (
-        <td key={i + '-' + j} className="p-2 align-top">
-          {j < i ? null : (cell ? (
-            cell.rgb ? (
-              <div className="text-xs">
-                <div className="mb-1">Niedeschlag</div>
-                {colorChip(cell.rgb)}
-              </div>
-            ) : (
-              <div className="text-xs text-neutral-400">—</div>
-            )
-          ) : (
-            <div className="text-xs text-neutral-400">—</div>
-          ))}
-        </td>
-      ))}
-    </tr>
-  ))}
-</tbody>
+              <tbody>
+                {data.solutions.map((row,i)=>(
+                  <tr key={row.label} className="border-t">
+                    <th className="p-2 font-medium">{row.label}{row.intrinsic && <span className="ml-2">{swatch(row.intrinsic)}</span>}</th>
+                    {data.grid[i].map((cell,j)=>(
+                      <td key={i+'-'+j} className="p-2 align-top">
+                        {j<i ? null : (cell
+  ? <div className="flex items-center gap-1 text-xs">
+      <span>mix</span>
+      {cell.rgb ? swatchRGB(cell.rgb) : <span className="text-neutral-400">—</span>}
+    </div>
+  : <div className="text-xs text-neutral-400">—</div>)}
 
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
 
@@ -222,26 +203,14 @@ function RealisticPane() {
             ))}
           </div>
 
-<details className="mt-4">
-  <summary className="cursor-pointer text-sm font-medium">Reveal answers</summary>
-  <div className="mt-2 overflow-x-auto">
-    <table className="min-w-[360px] text-left text-sm">
-      <thead>
-        <tr><th className="p-2">Pipette</th><th className="p-2">Cation</th><th className="p-2">Anion</th></tr>
-      </thead>
-      <tbody>
-        {data.solutions.map(s=>(
-          <tr key={s.label} className="border-t">
-            <td className="p-2">{s.label}</td>
-            <td className="p-2">{s.cation}</td>
-            <td className="p-2">{s.anion}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-</details>
-
+          <details className="mt-4">
+            <summary className="cursor-pointer text-sm font-medium">Reveal answers</summary>
+            <ul className="mt-2 list-disc pl-5 text-sm">
+              {data.solutions.map(s=>(
+                <li key={s.label}>{s.label}: <strong>{s.cation}</strong> + <strong>{s.anion}</strong></li>
+              ))}
+            </ul>
+          </details>
         </>
       )}
     </section>
@@ -326,7 +295,29 @@ function QuizPane() {
           {result && <div className="mt-2 text-sm">{result}</div>}
 
           {mode==='color-to-reactions' && q?.answers && (
-
+<details className="mt-4">
+  <summary className="cursor-pointer text-sm font-medium">Reveal answers</summary>
+  <div className="mt-2 overflow-x-auto">
+    <table className="min-w-[360px] text-left text-sm">
+      <thead>
+        <tr>
+          <th className="p-2">Pipette</th>
+          <th className="p-2">Cation</th>
+          <th className="p-2">Anion</th>
+        </tr>
+      </thead>
+      <tbody>
+        {data.solutions.map(s=>(
+          <tr key={s.label} className="border-t">
+            <td className="p-2">{s.label}</td>
+            <td className="p-2">{s.cation}</td>
+            <td className="p-2">{s.anion}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</details>
 
           )}
         </>
