@@ -71,22 +71,29 @@ function pickSolutions(n: number): Sol[] {
     if (!poolAnions.length) continue;
     const anion = poolAnions[Math.floor(Math.random()*poolAnions.length)];
     usedAnions.add(anion);
-    sols.push({ cation, anion, label: `P${sols.length+1}`, intrinsicRgb: intrinsicRgb(cation) || undefined });
+// In pickSolutions(...)
+sols.push({
+  cation: cation,
+  anion: anion,
+  label: String(sols.length + 1),       // was: `P${sols.length+1}`
+  intrinsicRgb: intrinsicRgb(cation) || undefined
+});
   }
   if (sols.length < n) throw new Error('Could not generate enough salts.');
   return sols;
 }
 
+// Replace your buildGrid(...) with:
 function buildGrid(sols: Sol[]) {
   const N = sols.length;
-  const grid: Array<Array<{ rgb?: RGB } | null>> = [];
-  for (let i=0;i<N;i++){
-    const row: Array<{ rgb?: RGB } | null> = [];
-    for (let j=0;j<N;j++){
-      if (j<i) row.push(null);
-      else if (i===j) row.push(sols[i].intrinsicRgb ? { rgb: sols[i].intrinsicRgb } : null);
-      else {
-        const e = outcome(sols[i], sols[j]);
+  const grid: Array<Array<{ rgb?: RGB; dash?: true } | null>> = [];
+  for (let i = 0; i < N; i++) {
+    const row: Array<{ rgb?: RGB; dash?: true } | null> = [];
+    for (let j = 0; j < N; j++) {
+      if (i === j) {
+        row.push({ dash: true }); // diagonal: show '-'
+      } else {
+        const e = outcome(sols[i], sols[j]); // compute BOTH halves
         row.push(e ? { rgb: e.rgb || undefined } : null);
       }
     }
@@ -94,6 +101,7 @@ function buildGrid(sols: Sol[]) {
   }
   return grid;
 }
+
 
 function colorStats(grid: Array<Array<{ rgb?: RGB } | null>>) {
   let colored = 0;
