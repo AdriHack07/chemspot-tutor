@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+const MIX_LABEL = 'Niedeschlag'; // change to 'Niederschlag' if you prefer the correct spelling
+
 // ---------- shared ----------
 function cls(...s: (string|false|undefined)[]) { return s.filter(Boolean).join(' '); }
 type Msg = { role: 'user'|'assistant', content: string };
@@ -110,20 +112,19 @@ type Cell = { rgb?: [number,number,number] } | null;
 type RealisticResp = { solutions: { label:string; cation:string; anion:string; intrinsicRgb?: [number,number,number] }[]; grid: Cell[][]; stats?: { coloredCount:number; distinct:number } };
 
 
-function swatchRGB(rgb?: [number,number,number]) {
+function colorChip(rgb?: [number, number, number]) {
   if (!rgb) return null;
-  const [r,g,b] = rgb;
-  const bg = `rgb(${r}, ${g}, ${b})`;
-  // Pick text color for contrast
-  const yiq = (r*299 + g*587 + b*114)/1000;
-  const textColor = yiq >= 160 ? '#111' : 'white';
+  const [r, g, b] = rgb;
   return (
-    <span className="inline-block rounded px-2 py-0.5 text-xs"
-          style={{ background: bg, color: textColor }}>
-      {r},{g},{b}
-    </span>
+    <span
+      className="inline-block h-5 w-10 rounded"
+      style={{ background: `rgb(${r}, ${g}, ${b})` }}
+      aria-label={`rgb(${r},${g},${b})`}
+      title={`rgb(${r},${g},${b})`}
+    />
   );
 }
+
 
 
 function RealisticPane() {
