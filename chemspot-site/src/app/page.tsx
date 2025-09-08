@@ -106,8 +106,9 @@ function ChatPane() {
 }
 
 // ---------- REALISTIC ----------
-type Cell = { type: string; color?: string } | null;
-type RealisticResp = { solutions: { label:string; cation:string; anion:string; intrinsic?:string }[]; grid: Cell[][] };
+type Cell = { rgb?: [number,number,number] } | null;
+type RealisticResp = { solutions: { label:string; cation:string; anion:string; intrinsicRgb?: [number,number,number] }[]; grid: Cell[][]; stats?: { coloredCount:number; distinct:number } };
+
 
 function swatchRGB(rgb?: [number,number,number]) {
   if (!rgb) return null;
@@ -167,7 +168,7 @@ function RealisticPane() {
               <tbody>
                 {data.solutions.map((row,i)=>(
                   <tr key={row.label} className="border-t">
-                    <th className="p-2 font-medium">{row.label}{row.intrinsic && <span className="ml-2">{swatch(row.intrinsic)}</span>}</th>
+{(row as any).intrinsicRgb && <span className="ml-2">{swatchRGB((row as any).intrinsicRgb)}</span>}
                     {data.grid[i].map((cell,j)=>(
                       <td key={i+'-'+j} className="p-2 align-top">
                         {j<i ? null : (cell
@@ -203,14 +204,26 @@ function RealisticPane() {
             ))}
           </div>
 
-          <details className="mt-4">
-            <summary className="cursor-pointer text-sm font-medium">Reveal answers</summary>
-            <ul className="mt-2 list-disc pl-5 text-sm">
-              {data.solutions.map(s=>(
-                <li key={s.label}>{s.label}: <strong>{s.cation}</strong> + <strong>{s.anion}</strong></li>
-              ))}
-            </ul>
-          </details>
+<details className="mt-4">
+  <summary className="cursor-pointer text-sm font-medium">Reveal answers</summary>
+  <div className="mt-2 overflow-x-auto">
+    <table className="min-w-[360px] text-left text-sm">
+      <thead>
+        <tr><th className="p-2">Pipette</th><th className="p-2">Cation</th><th className="p-2">Anion</th></tr>
+      </thead>
+      <tbody>
+        {data.solutions.map(s=>(
+          <tr key={s.label} className="border-t">
+            <td className="p-2">{s.label}</td>
+            <td className="p-2">{s.cation}</td>
+            <td className="p-2">{s.anion}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</details>
+
         </>
       )}
     </section>
@@ -295,29 +308,7 @@ function QuizPane() {
           {result && <div className="mt-2 text-sm">{result}</div>}
 
           {mode==='color-to-reactions' && q?.answers && (
-<details className="mt-4">
-  <summary className="cursor-pointer text-sm font-medium">Reveal answers</summary>
-  <div className="mt-2 overflow-x-auto">
-    <table className="min-w-[360px] text-left text-sm">
-      <thead>
-        <tr>
-          <th className="p-2">Pipette</th>
-          <th className="p-2">Cation</th>
-          <th className="p-2">Anion</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.solutions.map(s=>(
-          <tr key={s.label} className="border-t">
-            <td className="p-2">{s.label}</td>
-            <td className="p-2">{s.cation}</td>
-            <td className="p-2">{s.anion}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-</details>
+
 
           )}
         </>
