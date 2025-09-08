@@ -112,18 +112,26 @@ type Cell = { rgb?: [number,number,number] } | null;
 type RealisticResp = { solutions: { label:string; cation:string; anion:string; intrinsicRgb?: [number,number,number] }[]; grid: Cell[][]; stats?: { coloredCount:number; distinct:number } };
 
 
+// put near the top, replace your existing colorChip()
 function colorChip(rgb?: [number, number, number]) {
   if (!rgb) return null;
   const [r, g, b] = rgb;
   return (
     <span
-      className="inline-block h-5 w-10 rounded"
-      style={{ background: `rgb(${r}, ${g}, ${b})` }}
+      // inline size so it shows even if Tailwind didn’t load
+      style={{
+        display: 'inline-block',
+        width: '40px',
+        height: '20px',
+        background: `rgb(${r}, ${g}, ${b})`,
+        borderRadius: '6px'
+      }}
       aria-label={`rgb(${r},${g},${b})`}
       title={`rgb(${r},${g},${b})`}
     />
   );
 }
+
 
 
 
