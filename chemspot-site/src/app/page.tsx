@@ -236,4 +236,64 @@ function QuizPane() {
         setResult('No expected color set.');
       }
     } else {
-      //
+      // color-to-reactions
+      const user = answer.split(',').map((s:string)=>s.trim()).filter(Boolean);
+      const must = (q?.answers||[]) as string[];
+      const missing = must.filter(x=>!user.includes(x));
+      const extras  = user.filter(x=>!must.includes(x));
+      setResult(missing.length===0 && extras.length===0
+        ? 'Correct (all combinations)! ✅'
+        : missing.length===0
+          ? `Contains extras not in DB. Expected exactly: ${must.join('; ')}`
+          : extras.length===0
+            ? `Semi-correct — missing: ${missing.join('; ')}`
+            : `Semi-correct — missing: ${missing.join('; ')}; extra: ${extras.join('; ')}`);
+    }
+  }
+
+  return (
+    <section className="flex-1 rounded-2xl bg-white p-3 shadow-sm">
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <label className="text-sm">Mode:</label>
+        <select value={mode} onChange={e=>setMode(e.target.value as any)} className="rounded border px-2 py-1 text-sm">
+          <option value="pair-to-color">Pair → Color (with traps)</option>
+          <option value="color-to-reactions">Color → Reactions (list ALL)</option>
+        </select>
+        {mode==='pair-to-color' && (
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={traps} onChange={e=>setTraps(e.target.checked)}/>
+            Include traps (no reaction)
+          </label>
+        )}
+        <button onClick={newQ} className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">New question</button>
+      </div>
+
+      {!q && <p className="text-sm text-neutral-600">Click “New question” to start.</p>}
+
+      {q && (
+        <>
+          <div className="rounded-lg border bg-neutral-50 p-3 text-sm">
+            <strong>Question:</strong> {q.prompt}
+            {q.color && <div className="mt-1 text-xs text-neutral-600">Color: {q.color}</div>}
+          </div>
+
+          <div className="mt-3 flex gap-2">
+            <input value={answer} onChange={e=>setAnswer(e.target.value)}
+                   placeholder={mode==='pair-to-color' ? 'e.g., white  /  no reaction'
+                               : 'comma-separated: Ag+ + Cl-, Ba2+ + SO4^2-, ...'}
+                   className="flex-1 rounded border px-2 py-2 text-sm"/>
+            <button onClick={grade} className="rounded bg-emerald-600 px-3 py-2 text-sm text-white">Check</button>
+          </div>
+          {result && <div className="mt-2 text-sm">{result}</div>}
+
+          {mode==='color-to-reactions' && q?.answers && (
+            <details className="mt-2">
+              <summary className="cursor-pointer text-sm">Reveal full answer set</summary>
+              <div className="mt-1 text-sm">{q.answers.join('; ')}</div>
+            </details>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
