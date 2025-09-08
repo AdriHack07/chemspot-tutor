@@ -3,7 +3,7 @@
    - mode: 'color-to-reactions' -> choose a color; user must list ALL reactions producing it */
 
 import { NextResponse } from 'next/server';
-import { DB } from '@/lib/db';
+import { DB, isValidColorName } from '@/lib/db';
 
 type InorgEntry = { type: 'ppt'|'observation'|'no-reaction'; color?: string; notes?: string[]; eq?: string };
 
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
     if (mode === 'pair-to-color') {
       // pick a color pair OR a trap (no-reaction)
-      const colored = PAIRS.filter(p => p.e.type !== 'no-reaction' && p.e.color);
+      const colored = PAIRS.filter(p => p.e.type !== 'no-reaction' && isValidColorName(p.e.color));
       const noReact = PAIRS.filter(p => p.e.type === 'no-reaction');
 
       const pickTrap = traps && Math.random() < 0.3 && noReact.length;
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
       // pick a color that has at least 1 reaction
       const byColor = new Map<string, Array<{ cation: string; anion: string; e: InorgEntry }>>();
       for (const p of PAIRS) {
-        if (p.e.color && p.e.type !== 'no-reaction') {
+if (p.e.type !== 'no-reaction' && isValidColorName(p.e.color)) {
           const key = p.e.color;
           if (!byColor.has(key)) byColor.set(key, []);
           byColor.get(key)!.push(p);
