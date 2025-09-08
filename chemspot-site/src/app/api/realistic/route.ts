@@ -1,59 +1,74 @@
+// src/app/api/realistic/route.ts
 import { NextResponse } from 'next/server';
-import { DB, RGB, readOutcomeRGB, isValidColorName, colorNameToRGB } from '@/lib/db';
+import { DB } from '@/lib/db';
 
+type RGB = [number, number, number];
 type InorgEntry = { type?: 'ppt'|'observation'|'no-reaction'; color?: string; rgb?: RGB; notes?: string[] } | any;
 type Sol = { cation: string; anion: string; label: string; intrinsicRgb?: RGB };
 
 export const runtime = 'edge';
 
+// --- helpers: DB readers that tolerate different shapes ---
 const ALL_CATIONS = Object.keys(DB.inorganic);
 const ALL_ANIONS  = Array.from(new Set(Object.values(DB.inorganic).flatMap(o => Object.keys(o))))
   .filter(a => a !== 'selbst' && a !== 'flamme');
 
-function intrinsicRgb(cation: string): RGB | null {
-  const self = DB.inorganic[cation]?.['selbst'] as InorgEntry | undefined;
-  const named = DB.intrinsicColors?.[`${cation}(aq)`];
-  return readOutcomeRGB(self) ?? (named ? colorNameToRGB(named) : null);
+function readRgb(entry: InorgEntry | undefined): RGB | null {
+  if (!entry) return null;
+  // common shapes: { rgb: [r,g,b] }  or { color: 'name' } or legacy [ [r,g,b], ... ]
+  if (Array.isArray(entry?.rgb) && entry.rgb.length === 3) return entry.rgb as RGB;
+  if (Array.isArray(entry) && Array.isArray(entry[0]) && entry[0].length === 3) return entry[0] as RGB;
+  return null;
 }
-
+function intrinsicRgb(cation: string): RGB | null {
+  const self = DB.inorganic[cation]?.['selbst'];
+  return readRgb(self);
+}
 function reacts(cation: string, anion: string): { rgb: RGB | null } | null {
   const e = DB.inorganic[cation]?.[anion] as InorgEntry | undefined;
   if (!e) return null;
-  return { rgb: readOutcomeRGB(e) };
+  return { rgb: readRgb(e) };
 }
-
-function isWhite(rgb: RGB | null) {
-  if (!rgb) return false;
+function isWhite(rgb: RGB | null): boolean {
+  if (!rgb) return false; // null means we don’t know; treat as not-white (won’t count as colored unless rgb exists)
   const [r,g,b] = rgb;
+  // strict white; tweak threshold if your DB encodes "almost white"
   return r === 255 && g === 255 && b === 255;
 }
-function isColored(rgb: RGB | null) {
+function isColored(rgb: RGB | null): boolean {
+  // “colored” means a visible, non-white result (black, yellow, brown, etc. all count)
   return !!rgb && !isWhite(rgb);
 }
 
+// prefer the more colorful outcome if only one side yields color
 function outcome(a: Sol, b: Sol): { rgb: RGB | null } | null {
   const e1 = reacts(a.cation, b.anion);
   const e2 = reacts(b.cation, a.anion);
   if (!e1 && !e2) return null;
   if (e1 && !e2) return e1;
   if (e2 && !e1) return e2;
+  // both exist → prefer colored, otherwise just return first
   if (isColored(e1!.rgb) && !isColored(e2!.rgb)) return e1!;
   if (isColored(e2!.rgb) && !isColored(e1!.rgb)) return e2!;
   return e1!;
 }
 
+// --- solution set generation with color coverage constraints ---
 function pickSolutions(n: number): Sol[] {
   const sols: Sol[] = [];
   const pool = [...ALL_CATIONS];
-  const weights = pool.map(c => {
+
+  // weight by how many colored outcomes the cation tends to produce
+  const colorWeight = (c: string) => {
     const m = DB.inorganic[c] || {};
     let k = 0;
-    for (const [an, e] of Object.entries(m)) {
+    for (const an of Object.keys(m)) {
       if (an === 'selbst' || an === 'flamme') continue;
-      if (isColored(readOutcomeRGB(e as any))) k++;
+      if (isColored(readRgb(m[an]))) k++;
     }
     return Math.max(k, 1);
-  });
+  };
+  const weights = pool.map(colorWeight);
 
   const usedAnions = new Set<string>();
   while (sols.length < n && pool.length) {
@@ -64,16 +79,21 @@ function pickSolutions(n: number): Sol[] {
     const cation = pool.splice(idx,1)[0];
     weights.splice(idx,1);
 
-    const forbid = new Set(Object.keys(DB.inorganic[cation] || {}));
+    const forbid = new Set(Object.keys(DB.inorganic[cation] || {})); // avoid internal reaction when possible
     const candidates = ALL_ANIONS.filter(a => !usedAnions.has(a) && !forbid.has(a));
-    const poolAnions = candidates.length ? candidates : ALL_ANIONS.filter(a => !usedAnions.has(a)); // fallback
+    // allow explicit no-reaction entries as internal-safe, too
+    const explicitNoReact = Object.entries(DB.inorganic[cation] || {})
+      .filter(([a,e]) => a!=='selbst' && a!=='flamme' && readRgb(e as any) === null) // null rgb ~ “no color known”
+      .map(([a]) => a);
 
+    const poolAnions = [...candidates, ...explicitNoReact];
     if (!poolAnions.length) continue;
     const anion = poolAnions[Math.floor(Math.random()*poolAnions.length)];
+
     usedAnions.add(anion);
     sols.push({ cation, anion, label: `P${sols.length+1}`, intrinsicRgb: intrinsicRgb(cation) || undefined });
   }
-  if (sols.length < n) throw new Error('Could not generate enough salts.');
+  if (sols.length < n) throw new Error('Could not generate enough salts without internal reaction.');
   return sols;
 }
 
@@ -102,6 +122,7 @@ function colorStats(grid: Array<Array<{ rgb?: RGB } | null>>) {
     if (cell?.rgb && isColored(cell.rgb)) {
       colored++;
       const [r,g,b] = cell.rgb;
+      // quantize to merge very similar shades
       const key = `${Math.round(r/24)}-${Math.round(g/24)}-${Math.round(b/24)}`;
       bucket.add(key);
     }
@@ -111,13 +132,16 @@ function colorStats(grid: Array<Array<{ rgb?: RGB } | null>>) {
 
 export async function POST(req: Request) {
   try {
-    const { n = 7, minColored } = await req.json().catch(()=>({}));
+    const { n = 7, minColored = undefined } = await req.json().catch(()=>({}));
     const N = Math.min(Math.max(parseInt(String(n)||'7',10)||7,5), 9);
+
+    // coverage targets: at least 25% of upper-triangle cells colored, min 6 cells, min 4 distinct colors
     const upperCells = (N*(N-1))/2;
     let target = typeof minColored === 'number' ? minColored : Math.max(6, Math.ceil(0.25*upperCells));
     let minDistinct = 4;
 
-    let tries = 0, best: any = null;
+    // attempt loop with graceful relaxation
+    let tries = 0, best: { solutions: Sol[], grid: Array<Array<{rgb?: RGB} | null>>, stats: {coloredCount:number; distinct:number} } | null = null;
     while (tries++ < 120) {
       const sols = pickSolutions(N);
       const grid = buildGrid(sols);
@@ -126,10 +150,13 @@ export async function POST(req: Request) {
       if (stats.coloredCount >= target && stats.distinct >= minDistinct) {
         return NextResponse.json({ solutions: sols, grid, stats });
       }
-      if (tries === 60) target = Math.max(5, Math.floor(target*0.8));
-      if (tries === 90) minDistinct = Math.max(3, minDistinct-1);
+      // Gradually relax after many tries
+      if (tries === 60) { target = Math.max(5, Math.floor(target*0.8)); }
+      if (tries === 90) { minDistinct = Math.max(3, minDistinct-1); }
     }
-    if (best) return NextResponse.json({ ...best, note: 'Used best-available set after search.' });
+
+    // fallback to the best we saw
+    if (best) return NextResponse.json({ solutions: best.solutions, grid: best.grid, stats: best.stats, note: 'Used best-available set after search.' });
     throw new Error('Failed to construct a colorful grid.');
   } catch (e:any) {
     return NextResponse.json({ error: e?.message || 'realistic failed' }, { status: 500 });
