@@ -174,31 +174,33 @@ function RealisticPane() {
                 <th className="p-2"></th>
                 {data.solutions.map(s=><th key={s.label} className="p-2">{s.label}</th>)}
               </tr></thead>
-              <tbody>
-                {data.solutions.map((row,i)=>(
-                  <tr key={row.label} className="border-t">
-{(row as any).intrinsicRgb && <span className="ml-2">{swatchRGB((row as any).intrinsicRgb)}</span>}
-                    {data.grid[i].map((cell,j)=>(
-                      <td key={i+'-'+j} className="p-2 align-top">
-{j < i ? null : (cell ? (
-  cell.rgb ? (
-    <div className="text-xs">
-      <div className="mb-1">{MIX_LABEL}</div>
-      {colorChip(cell.rgb)}
-    </div>
-  ) : (
-    <div className="text-xs text-neutral-400">—</div>
-  )
-) : (
-  <div className="text-xs text-neutral-400">—</div>
-))}
+<tbody>
+  {data.solutions.map((row, i) => (
+    <tr key={row.label} className="border-t">
+      <th className="p-2 font-medium">
+        {row.label}
+        {row.intrinsicRgb && <span className="ml-2">{colorChip(row.intrinsicRgb)}</span>}
+      </th>
+      {data.grid[i].map((cell, j) => (
+        <td key={i + '-' + j} className="p-2 align-top">
+          {j < i ? null : (cell ? (
+            cell.rgb ? (
+              <div className="text-xs">
+                <div className="mb-1">Niedeschlag</div>
+                {colorChip(cell.rgb)}
+              </div>
+            ) : (
+              <div className="text-xs text-neutral-400">—</div>
+            )
+          ) : (
+            <div className="text-xs text-neutral-400">—</div>
+          ))}
+        </td>
+      ))}
+    </tr>
+  ))}
+</tbody>
 
-
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
             </table>
           </div>
 
