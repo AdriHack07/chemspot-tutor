@@ -295,10 +295,30 @@ function QuizPane() {
           {result && <div className="mt-2 text-sm">{result}</div>}
 
           {mode==='color-to-reactions' && q?.answers && (
-            <details className="mt-2">
-              <summary className="cursor-pointer text-sm">Reveal full answer set</summary>
-              <div className="mt-1 text-sm">{q.answers.join('; ')}</div>
-            </details>
+<details className="mt-4">
+  <summary className="cursor-pointer text-sm font-medium">Reveal answers</summary>
+  <div className="mt-2 overflow-x-auto">
+    <table className="min-w-[360px] text-left text-sm">
+      <thead>
+        <tr>
+          <th className="p-2">Pipette</th>
+          <th className="p-2">Cation</th>
+          <th className="p-2">Anion</th>
+        </tr>
+      </thead>
+      <tbody>
+        {data.solutions.map(s=>(
+          <tr key={s.label} className="border-t">
+            <td className="p-2">{s.label}</td>
+            <td className="p-2">{s.cation}</td>
+            <td className="p-2">{s.anion}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</details>
+
           )}
         </>
       )}
