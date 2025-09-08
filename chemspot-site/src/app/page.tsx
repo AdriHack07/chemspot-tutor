@@ -110,20 +110,20 @@ type Cell = { rgb?: [number,number,number] } | null;
 type RealisticResp = { solutions: { label:string; cation:string; anion:string; intrinsicRgb?: [number,number,number] }[]; grid: Cell[][]; stats?: { coloredCount:number; distinct:number } };
 
 
-function swatchRGB(rgb?: [number,number,number]) {
+function swatchRGB(rgb?: [number, number, number]) {
   if (!rgb) return null;
-  const [r,g,b] = rgb;
+  const [r, g, b] = rgb;
   const bg = `rgb(${r}, ${g}, ${b})`;
-  // Pick text color for contrast
-  const yiq = (r*299 + g*587 + b*114)/1000;
-  const textColor = yiq >= 160 ? '#111' : 'white';
   return (
-    <span className="inline-block rounded px-2 py-0.5 text-xs"
-          style={{ background: bg, color: textColor }}>
-      {r},{g},{b}
-    </span>
+    <span
+      className="inline-block h-4 w-10 rounded border"
+      style={{ background: bg, borderColor: 'rgba(0,0,0,0.2)' }}
+      title={`rgb(${r}, ${g}, ${b})`}             // hover tooltip only
+      aria-label={`rgb(${r}, ${g}, ${b})`}       // accessible, but not visible
+    />
   );
 }
+
 
 
 function RealisticPane() {
@@ -173,7 +173,7 @@ function RealisticPane() {
                       <td key={i+'-'+j} className="p-2 align-top">
                         {j<i ? null : (cell
   ? <div className="flex items-center gap-1 text-xs">
-      <span>mix</span>
+      <span></span>
       {cell.rgb ? swatchRGB(cell.rgb) : <span className="text-neutral-400">—</span>}
     </div>
   : <div className="text-xs text-neutral-400">—</div>)}
