@@ -173,7 +173,7 @@ function RealisticPane() {
                       <td key={i+'-'+j} className="p-2 align-top">
                         {j<i ? null : (cell
   ? <div className="flex items-center gap-1 text-xs">
-      <span>mix</span>
+      <span></span>
       {cell.rgb ? swatchRGB(cell.rgb) : <span className="text-neutral-400">—</span>}
     </div>
   : <div className="text-xs text-neutral-400">—</div>)}
