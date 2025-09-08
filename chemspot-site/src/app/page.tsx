@@ -106,8 +106,12 @@ function ChatPane() {
 }
 
 // ---------- REALISTIC ----------
-type Cell = { rgb?: [number,number,number] } | null;
-type RealisticResp = { solutions: { label:string; cation:string; anion:string; intrinsicRgb?: [number,number,number] }[]; grid: Cell[][]; stats?: { coloredCount:number; distinct:number } };
+type Cell = { rgb?: [number, number, number]; dash?: true } | null;
+type RealisticResp = {
+  solutions: { label: string; cation: string; anion: string; intrinsicRgb?: [number, number, number] }[];
+  grid: Cell[][];
+  stats?: { coloredCount: number; distinct: number };
+};
 
 
 function swatchRGB(rgb?: [number, number, number]) {
@@ -118,66 +122,75 @@ function swatchRGB(rgb?: [number, number, number]) {
     <span
       className="inline-block h-4 w-10 rounded border"
       style={{ background: bg, borderColor: 'rgba(0,0,0,0.2)' }}
-      title={`rgb(${r}, ${g}, ${b})`}             // hover tooltip only
-      aria-label={`rgb(${r}, ${g}, ${b})`}       // accessible, but not visible
+      title={`rgb(${r}, ${g}, ${b})`}
+      aria-label={`rgb(${r}, ${g}, ${b})`}
     />
   );
 }
 
 
 
+
 function RealisticPane() {
   const [n, setN] = useState(7);
   const [data, setData] = useState<RealisticResp | null>(null);
-  const [guesses, setGuesses] = useState<Record<string,{cation:string; anion:string}>>({}); // label -> guess
 
   async function gen() {
-    const res = await fetch('/api/realistic', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ n }) });
+    const res = await fetch('/api/realistic', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ n })
+    });
     const d: RealisticResp = await res.json();
-    setData(d); setGuesses({});
+    setData(d);
   }
-  function setGuess(label:string, field:'cation'|'anion', v:string){
-    setGuesses(g => ({...g, [label]: {...(g[label]||{cation:'',anion:''}), [field]: v}}));
-  }
-
-  const graded = (data && Object.fromEntries(data.solutions.map(s=>{
-    const g = guesses[s.label]||{cation:'',anion:''};
-    const ok = g.cation.trim()===s.cation && g.anion.trim()===s.anion;
-    return [s.label, ok];
-  }))) || {};
 
   return (
     <section className="flex-1 rounded-2xl bg-white p-3 shadow-sm">
       <div className="mb-3 flex items-center gap-3">
-        <label className="text-sm">Number of pipettes:</label>
-        <input type="number" min={5} max={9} value={n} onChange={e=>setN(parseInt(e.target.value||'7',10))}
-               className="w-20 rounded border px-2 py-1 text-sm"/>
-        <button onClick={gen} className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">Generate set</button>
+        <label className="text-sm">Pipettes:</label>
+        <input
+          type="number"
+          min={5}
+          max={9}
+          value={n}
+          onChange={(e) => setN(parseInt(e.target.value || '7', 10))}
+          className="w-20 rounded border px-2 py-1 text-sm"
+        />
+        <button onClick={gen} className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
+          Generate set
+        </button>
       </div>
 
-      {!data && <p className="text-sm text-neutral-600">Click “Generate set” to get 5–9 solutions. You’ll see a matrix of mixture outcomes. Guess each pipette’s contents.</p>}
+      {!data && <p className="text-sm text-neutral-600">Generate to see the grid, then guess each pipette.</p>}
 
       {data && (
         <>
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead><tr>
-                <th className="p-2"></th>
-                {data.solutions.map(s=><th key={s.label} className="p-2">{s.label}</th>)}
-              </tr></thead>
+            <table className="min-w-full table-fixed text-sm" style={{ borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th className="border p-2 text-center align-middle w-12"></th>
+                  {data.solutions.map((s) => (
+                    <th key={s.label} className="border p-2 text-center align-middle w-12">
+                      {s.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
               <tbody>
-                {data.solutions.map((row,i)=>(
-                  <tr key={row.label} className="border-t">
-{(row as any).intrinsicRgb && <span className="ml-2">{swatchRGB((row as any).intrinsicRgb)}</span>}
-                    {data.grid[i].map((cell,j)=>(
-                      <td key={i+'-'+j} className="p-2 align-top">
-                        {j<i ? null : (cell
-  ? <div className="flex items-center gap-1 text-xs">
-      <span></span>
-      {cell.rgb ? swatchRGB(cell.rgb) : <span className="text-neutral-400">—</span>}
-    </div>
-  : <div className="text-xs text-neutral-400">—</div>)}
-
+                {data.solutions.map((row, i) => (
+                  <tr key={row.label}>
+                    <th className="border p-2 text-center align-middle w-12">{row.label}</th>
+                    {data.grid[i].map((cell, j) => (
+                      <td key={`${i}-${j}`} className="border p-2 text-center align-middle w-12 h-12">
+                        {cell?.dash ? (
+                          <span className="text-neutral-400">-</span>
+                        ) : cell?.rgb ? (
+                          swatchRGB(cell.rgb)
+                        ) : (
+                          <span className="text-neutral-400">—</span>
+                        )}
                       </td>
                     ))}
                   </tr>
@@ -186,37 +199,35 @@ function RealisticPane() {
             </table>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-            {data.solutions.map(s=>(
-              <div key={s.label} className={cls('rounded-xl border p-3', graded[s.label] ? 'border-emerald-400' : 'border-neutral-200')}>
-                <div className="mb-2 text-sm font-semibold">{s.label} — guess contents</div>
-                <div className="flex gap-2">
-                  <input placeholder="Cation (e.g., Ag+)" value={guesses[s.label]?.cation||''}
-                         onChange={e=>setGuess(s.label,'cation',e.target.value)} className="flex-1 rounded border px-2 py-1 text-sm"/>
-                  <input placeholder="Anion (e.g., Cl-)" value={guesses[s.label]?.anion||''}
-                         onChange={e=>setGuess(s.label,'anion',e.target.value)} className="flex-1 rounded border px-2 py-1 text-sm"/>
-                </div>
-                <div className="mt-2 text-xs">
-                  {graded[s.label] ? <span className="text-emerald-600">✔ Correct</span> :
-                   (guesses[s.label]?.cation||guesses[s.label]?.anion) ? <span className="text-neutral-500">Keep trying…</span> : null}
-                </div>
-              </div>
-            ))}
-          </div>
-
           <details className="mt-4">
             <summary className="cursor-pointer text-sm font-medium">Reveal answers</summary>
-            <ul className="mt-2 list-disc pl-5 text-sm">
-              {data.solutions.map(s=>(
-                <li key={s.label}>{s.label}: <strong>{s.cation}</strong> + <strong>{s.anion}</strong></li>
-              ))}
-            </ul>
+            <div className="mt-2 overflow-x-auto">
+              <table className="min-w-[360px] text-left text-sm" style={{ borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th className="border p-2">Pipette</th>
+                    <th className="border p-2">Cation</th>
+                    <th className="border p-2">Anion</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.solutions.map((s) => (
+                    <tr key={s.label}>
+                      <td className="border p-2">{s.label}</td>
+                      <td className="border p-2">{s.cation}</td>
+                      <td className="border p-2">{s.anion}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </details>
         </>
       )}
     </section>
   );
 }
+
 
 // ---------- QUIZ ----------
 function QuizPane() {
