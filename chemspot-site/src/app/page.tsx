@@ -20,7 +20,7 @@ function sanitize(html: string) { return html; }
 type Tab = 'chat'|'realistic'|'quiz';
 
 export default function Page() {
-  const [tab, setTab] = useState<Tab>('chat');
+  const [tab, setTab] = useState<Tab>('realistic');
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-4xl flex-col p-4">
@@ -30,13 +30,14 @@ export default function Page() {
       </header>
 
       <nav className="mb-3 flex gap-2">
-        <button onClick={()=>setTab('chat')}
-          className={cls('rounded-full px-3 py-1 text-sm', tab==='chat' ? 'bg-neutral-900 text-white' : 'bg-white border')}>
-          Ask-the-Tutor (Chat)
-        </button>
+
         <button onClick={()=>setTab('realistic')}
           className={cls('rounded-full px-3 py-1 text-sm', tab==='realistic' ? 'bg-neutral-900 text-white' : 'bg-white border')}>
           Realistic spot test
+        </button>
+          <button onClick={()=>setTab('chat')}
+          className={cls('rounded-full px-3 py-1 text-sm', tab==='chat' ? 'bg-neutral-900 text-white' : 'bg-white border')}>
+          Ask-the-Tutor (Chat)
         </button>
         <button onClick={()=>setTab('quiz')}
           className={cls('rounded-full px-3 py-1 text-sm', tab==='quiz' ? 'bg-neutral-900 text-white' : 'bg-white border')}>
