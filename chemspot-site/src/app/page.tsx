@@ -109,14 +109,21 @@ function ChatPane() {
 type Cell = { type: string; color?: string } | null;
 type RealisticResp = { solutions: { label:string; cation:string; anion:string; intrinsic?:string }[]; grid: Cell[][] };
 
-function swatch(c?: string) {
-  if (!c) return null;
-  // try simple background with color name; fallback to text only if custom shade
-  const simple = ['white','black','gray','grey','yellow','orange','brown','red','pink','purple','violet','blue','green','gold','beige','cream'];
-  const isSimple = simple.includes(c) || simple.includes((c||'').split('-')[0]);
-  return <span className={cls('inline-block rounded px-2 py-0.5 text-xs', isSimple?'text-black':'' )}
-               style={isSimple ? { background:c } : {}}>{c}</span>;
+function swatchRGB(rgb?: [number,number,number]) {
+  if (!rgb) return null;
+  const [r,g,b] = rgb;
+  const bg = `rgb(${r}, ${g}, ${b})`;
+  // Pick text color for contrast
+  const yiq = (r*299 + g*587 + b*114)/1000;
+  const textColor = yiq >= 160 ? '#111' : 'white';
+  return (
+    <span className="inline-block rounded px-2 py-0.5 text-xs"
+          style={{ background: bg, color: textColor }}>
+      {r},{g},{b}
+    </span>
+  );
 }
+
 
 function RealisticPane() {
   const [n, setN] = useState(7);
